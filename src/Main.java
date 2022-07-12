@@ -4,6 +4,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import java.util.zip.ZipInputStream;
 
 public class Main {
     public static StringBuilder log = new StringBuilder();
@@ -53,11 +54,47 @@ public class Main {
         fileDelete("C:\\Новая папка (2)\\Games\\savegames\\save1.dat");
         fileDelete("C:\\Новая папка (2)\\Games\\savegames\\save2.dat");
         fileDelete("C:\\Новая папка (2)\\Games\\savegames\\save3.dat");
+
+
+        openZip("C:\\Новая папка (2)\\Games\\savegames\\zip_output.zip", "C:\\Новая папка (2)\\Games\\savegames");
+        System.out.println(openProgress("C:\\Новая папка (2)\\Games\\savegames\\paked_notes1.txt"));
+    }
+
+    public static void openZip(String pathZip, String pathDirectory) {
+        try (ZipInputStream zin = new ZipInputStream(new FileInputStream(pathZip))) {
+            ZipEntry entry;
+            String name;
+            while ((entry = zin.getNextEntry()) != null) {
+                name = entry.getName();
+                FileOutputStream fout = new FileOutputStream("C:\\Новая папка (2)\\Games\\savegames\\" + name);
+                for (int c = zin.read(); c != -1; c = zin.read()) {
+                    fout.write(c);
+                }
+                fout.flush();
+                zin.closeEntry();
+                fout.close();
+            }
+        } catch (Exception ex) {
+            System.out.println(ex.getMessage());
+        }
+    }
+
+    public static GameProgress openProgress(String path) {
+        GameProgress gameProgress = null;
+        try (FileInputStream fis = new FileInputStream(path);
+             ObjectInputStream ois = new ObjectInputStream(fis)) {
+            gameProgress = (GameProgress) ois.readObject();
+        } catch (Exception ex) {
+            System.out.println(ex.getMessage());
+        }
+        return gameProgress;
     }
 
     public static void fileDelete(String path) {
         File file = new File(path);
-        file.delete();
+        if (file.delete()) {
+            System.out.println("файл удален");
+        }
     }
 
     public static void saveGame(String text, GameProgress user) {
@@ -70,21 +107,20 @@ public class Main {
     }
 
     public static void zipFiles(String pathZip, List<String> list) {
-        for (int i = 0; i < list.size(); i++) {
-            try (ZipOutputStream zout = new ZipOutputStream(new FileOutputStream(pathZip));
-                 FileInputStream fis = new FileInputStream(list.get(i))) { // этот файл запишем в архив
-                ZipEntry entry = new ZipEntry("paked_notes.txt");   // записываем имя нового файла в архиве
-                zout.putNextEntry(entry); // говорим что сохраняем новый файл
+        try (ZipOutputStream zout = new ZipOutputStream(new FileOutputStream(pathZip))) { // этот файл запишем в архив
 
+            for (int i = 0; i < list.size(); i++) {
+                ZipEntry entry = new ZipEntry("paked_notes" + i + ".txt");   // записываем имя нового файла в архиве
+                zout.putNextEntry(entry); // говорим что сохраняем новый файл
+                FileInputStream fis = new FileInputStream(list.get(i));
                 byte[] buffer = new byte[fis.available()]; // Буферт будет размера этого файла
                 fis.read(buffer);
-
                 zout.write(buffer);
-                zout.closeEntry();  //  закрывает операцию
-            } catch (Exception ex) {
-                System.out.println(ex.getMessage());
-            }
-
+                zout.closeEntry();   //  закрывает операцию
+                fis.close();
+            } //  закрывает файлы
+        } catch (Exception ex) {
+            System.out.println(ex.getMessage());
         }
     }
 
